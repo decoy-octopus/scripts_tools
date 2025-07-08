@@ -1,0 +1,10 @@
+[user]
+	name = <name to be displayed>
+	email = <e-mail associated with key>
+	signingkey = <GPG key ID>
+[gpg]
+	program = gpg
+[commit]
+	gpgsign = true
+[init]
+	templateDir = $HOME/.git-templates

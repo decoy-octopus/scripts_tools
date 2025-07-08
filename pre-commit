@@ -1,0 +1,123 @@
+#!/bin/sh
+
+# this pre-commit hook should be placed in the $HOME/.git-templates/hooks directory and given 0644 permission.
+# it can be overriden with the '--no-verify' flag after each commit.
+
+# prioritize per-project linting files
+YAMLLINT_CONFIG=".yamllint.yml"
+RUFF_CONFIG="ruff.toml"
+GOLANGCI_CONFIG=".golangci.yml"
+
+# default to global configs
+[ -f "$YAMLLINT_CONFIG" ] || YAMLLINT_CONFIG="$HOME/.git-templates/hooks/.yamllint.yml"
+[ -f "$RUFF_CONFIG" ] || RUFF_CONFIG="$HOME/.git-templates/hooks/.ruff.toml"
+[ -f "$GOLANGCI_CONFIG" ] || GOLANGCI_CONFIG="$HOME/.git-templates/hooks/.golangci.yml"
+
+echo "* * *   P R E - C O M M I T   H O O K S   * * *"
+
+echo "\nyamllint config file: $YAMLLINT_CONFIG"
+echo "ruff config file: $RUFF_CONFIG"
+echo "golangci-lint config file: $GOLANGCI_CONFIG\n"
+
+# check if required linters are actually installed
+for cmd in yamllint ruff golangci-lint; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+        echo "Error: $cmd is not installed. Please install it and try again.\n"
+        exit 1
+    fi
+done
+
+# list all files staged to be committed
+YAML_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.ya?ml$' || true)
+PYTHON_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
+GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.go$' || true)
+
+# count files
+NUM_YAML_FILES=$(echo "$YAML_FILES" | sed '/^$/d' | wc -l)
+NUM_PYTHON_FILES=$(echo "$PYTHON_FILES" | sed '/^$/d' | wc -l)
+NUM_GO_FILES=$(echo "$GO_FILES" | sed '/^$/d' | wc -l)
+
+# track failure status
+YAMLLINT_FAILED=0
+RUFF_FAILED=0
+GOLANGCI_FAILED=0
+
+# print lintable yaml files
+if [ "$NUM_YAML_FILES" -gt 0 ]; then
+    echo "=== Staged YAML Files ==="
+    echo "$YAML_FILES"
+    echo "=========================\n"
+# else
+#     echo "No YAML files to lint. Skipping yamllint."
+fi
+
+# print lintable Python files
+if [ "$NUM_PYTHON_FILES" -gt 0 ]; then
+    echo "=== Staged Python files ==="
+    echo "$PYTHON_FILES"
+    echo "=========================\n"
+# else
+#     echo "No Python files to lint. Skipping Ruff linting.\n"
+fi
+
+# print lintable Go files
+if [ "$NUM_GO_FILES" -gt 0 ]; then
+    echo "=== Staged Go files ==="
+    echo "$GO_FILES"
+    echo "=========================\n"
+# else
+#     echo "No Go files to lint. Skipping golangci-lint."
+fi
+
+# run Ruff
+RUFF_FAILED=0
+if [ "$NUM_PYTHON_FILES" -gt 0 ]; then
+    echo "\nRunning Ruff on $NUM_PYTHON_FILES file(s)."
+    for file in $PYTHON_FILES; do
+        echo "Linting: $file"
+        ruff check --config "$RUFF_CONFIG" "$file" 2>&1 || RUFF_FAILED=1
+    done
+
+    if [ "$RUFF_FAILED" -eq 0 ]; then
+        echo "Ruff found no issues!\n"
+    fi
+fi
+
+# run yamllint
+if [ "$NUM_YAML_FILES" -gt 0 ]; then
+    echo "\nRunning yamllint on $NUM_YAML_FILES file(s)."
+    YAMLLINT_OUTPUT=$(echo "$YAML_FILES" | xargs yamllint -c "$YAMLLINT_CONFIG" 2>&1)
+    if [ -n "$YAMLLINT_OUTPUT" ]; then
+        echo "$YAMLLINT_OUTPUT\n"
+        YAMLLINT_FAILED=1
+    else
+        echo "YAML linting found no errors!\n"
+    fi
+fi
+
+# run golangci-lint
+if [ "$NUM_GO_FILES" -gt 0 ]; then
+    echo "\nRunning golangci-lint on $NUM_GO_FILES file(s)."
+    GOLANGCI_LINT_OUTPUT=$(golangci-lint run --fix $(echo "$GO_FILES" | tr '\n' ' ') 2>&1)
+    if [ -n "$GOLANGCI_LINT_OUTPUT" ]; then
+        echo "$GOLANGCI_LINT_OUTPUT\n"
+        GOLANGCI_LINT_FAILED=1
+    else
+        echo "GolangCI-Lint found no issues!\n"
+    fi
+fi
+
+# exit code 1 for any linting failure
+if [ $YAMLLINT_FAILED -ne 0 ] || [ $RUFF_FAILED -ne 0 ] || [ $GOLANGCI_FAILED -ne 0 ]; then
+    echo "Please lint all above files and commit again.\n"
+    exit 1
+fi
+
+if [ $NUM_YAML_FILES=0 ] && [ $NUM_PYTHON_FILES=0 ] && [ $NUM_GO_FILES=0 ]; then
+    echo "No linting necessary.\n"
+    exit 0
+fi
+
+# exit code 0 for great success
+echo "All linting passed!\n"
+exit 0

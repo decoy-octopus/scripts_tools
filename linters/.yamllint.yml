@@ -1,0 +1,16 @@
+---
+extends: default
+
+rules:
+  comments-indentation: false
+  trailing-spaces: {}
+  line-length:
+    max: 400
+    allow-non-breakable-inline-mappings: true
+    allow-non-breakable-words: true
+    level: warning
+  braces:
+    level: warning
+    max-spaces-inside: 1
+  brackets:
+    level: warning

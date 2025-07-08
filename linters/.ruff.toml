@@ -1,0 +1,51 @@
+exclude = [
+    ".yml",
+    ".txt",
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 200
+indent-width = 2
+
+[lint]
+# Select rules from https://docs.astral.sh/ruff/rules/
+select = ["C901", "D", "E", "F", "N", "W", "FLY", "TRY"]
+ignore = ["D100", "D101", "D102", "D103", "D203", "D213", "D401", "D405", "TRY003"]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+preview = true
+
+# if you want to ignore a specific rule in a specific file e.g. {'some_file.py' = ['F841']}
+per-file-ignores = {}
+
+[format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
